@@ -373,13 +373,74 @@ $('#clear-search-cache').addEventListener('click', () => {
   catch { tell('Este navegador no permite acceder al almacenamiento local.'); }
 });
 let installEvent;
-window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installEvent = event; });
-window.addEventListener('appinstalled', () => { installEvent = null; $('#install').hidden = true; tell('Rutas Managua está instalada.'); });
-$('#install').addEventListener('click', async () => {
-  if (installEvent) { await installEvent.prompt(); await installEvent.userChoice; installEvent = null; }
-  else tell(window.isSecureContext ? 'En Chrome para Android: abre el menú ⋮ y elige «Instalar aplicación» o «Añadir a pantalla de inicio». La opción depende del navegador.' : 'Para instalar y usar GPS necesitas HTTPS. En desarrollo, usa localhost mediante USB con adb reverse.');
+const installBanner = $('#install-banner');
+const installDialog = $('#install-dialog');
+function isInstalledApp() {
+  return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+function installDismissed() {
+  try { return sessionStorage.getItem('rutas:install-dismissed') === '1'; } catch { return false; }
+}
+function showInstallBanner() {
+  if (!isInstalledApp() && !installDismissed()) installBanner.hidden = false;
+}
+function dismissInstallBanner() {
+  installBanner.hidden = true;
+  try { sessionStorage.setItem('rutas:install-dismissed', '1'); } catch {}
+}
+function showInstallInstructions() {
+  const platform = navigator.userAgent || '';
+  const instructions = $('#install-instructions');
+  if (/iPhone|iPad|iPod/i.test(platform)) {
+    instructions.textContent = 'En iPhone o iPad: abre esta página en Safari, toca Compartir y elige «Añadir a pantalla de inicio».';
+  } else if (/Android/i.test(platform)) {
+    instructions.textContent = 'En Brave para Android: abre el menú ⋮ y selecciona «Instalar aplicación» o «Añadir a pantalla principal».';
+  } else {
+    instructions.textContent = 'En Brave para computadora: abre el menú ⋮, entra en «Guardar y compartir» y selecciona «Instalar Rutas Managua». También puedes usar el ícono de instalación que aparece en la barra de direcciones.';
+  }
+  if (installDialog?.showModal) installDialog.showModal();
+  else tell(instructions.textContent, true);
+}
+async function requestInstall() {
+  if (!installEvent) { showInstallInstructions(); return; }
+  const promptEvent = installEvent;
+  installEvent = null;
+  try {
+    await promptEvent.prompt();
+    const result = await promptEvent.userChoice;
+    if (result?.outcome === 'accepted') dismissInstallBanner();
+    else tell('La instalación quedó pendiente. Puedes intentarlo de nuevo desde «Instalar».');
+  } catch {
+    showInstallInstructions();
+  }
+}
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  installEvent = event;
+  showInstallBanner();
 });
-if (matchMedia('(display-mode: standalone)').matches) $('#install').hidden = true;
+window.addEventListener('appinstalled', () => {
+  installEvent = null;
+  installBanner.hidden = true;
+  $('#install').hidden = true;
+  if (installDialog.open) installDialog.close();
+  tell('Rutas Managua está instalada.');
+});
+$('#install').addEventListener('click', requestInstall);
+$('#install-banner-action').addEventListener('click', requestInstall);
+$('#install-banner-close').addEventListener('click', dismissInstallBanner);
+$('#install-close').addEventListener('click', () => installDialog.close());
+$('#install-done').addEventListener('click', () => installDialog.close());
+installDialog.addEventListener('click', event => {
+  if (event.target === installDialog) installDialog.close();
+});
+$('#update-dismiss').addEventListener('click', () => { $('#update-notice').hidden = true; });
+if (isInstalledApp()) {
+  $('#install').hidden = true;
+  installBanner.hidden = true;
+} else {
+  setTimeout(showInstallBanner, 1400);
+}
 
 let baseLayer, tileFailed = false;
 function connectionStatus() {
@@ -438,8 +499,11 @@ async function start() {
         const registration = await navigator.serviceWorker.register('./sw.js');
         registration.addEventListener('updatefound', () => {
           const worker = registration.installing;
-          worker?.addEventListener('statechange', () => { if (worker.state === 'installed' && navigator.serviceWorker.controller) tell('Hay una nueva versión guardada. Cierra las pestañas de la app y vuelve a abrirla para actualizar.'); });
+          worker?.addEventListener('statechange', () => {
+            if (worker.state === 'installed' && navigator.serviceWorker.controller) $('#update-notice').hidden = false;
+          });
         });
+        if (registration.waiting && navigator.serviceWorker.controller) $('#update-notice').hidden = false;
         await navigator.serviceWorker.ready;
         $('#data-summary').textContent = `${network.routes.length} rutas · archivo disponible sin conexión`;
       } catch { tell('La app funciona, pero no se pudo preparar el acceso sin conexión.'); }

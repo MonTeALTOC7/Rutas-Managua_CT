@@ -28,6 +28,7 @@
     </div>
   </header>
   <div class="history-banner"><span data-icon="history"></span><p><strong>Explorador histórico</strong><span> Datos espaciales de 2020. Servicio actual sin confirmar.</span></p><a href="#sources" id="history-details">Ver fuentes</a></div>
+  <div id="update-notice" class="update-notice" role="status" hidden><span data-icon="info"></span><p><strong>Hay una versión nueva.</strong><span> Cierra las pestañas abiertas de Rutas Managua y vuelve a entrar para cargarla.</span></p><button id="update-dismiss" class="icon-button" type="button" aria-label="Cerrar aviso"><span data-icon="close"></span></button></div>
   <main class="workspace">
     <section class="sidebar" id="controls" aria-label="Planifica y explora">
       <nav class="tabs" aria-label="Modo de consulta">
@@ -83,7 +84,9 @@
       <div id="map-status" class="map-status" hidden>Sin conexión: trazados disponibles, mapa base no disponible.</div>
     </section>
   </main>
+  <aside id="install-banner" class="install-banner" role="region" aria-label="Instala Rutas Managua" hidden><span class="install-banner-icon" data-icon="bus"></span><p><strong>Instala Rutas Managua</strong><span> Accede más rápido y úsala como una app.</span></p><button id="install-banner-action" class="button primary" type="button">Instalar</button><button id="install-banner-close" class="icon-button" type="button" aria-label="Ahora no"><span data-icon="close"></span></button></aside>
   <div id="status" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="install-dialog" aria-labelledby="install-title"><div class="dialog-heading"><div><span class="eyebrow">ACCESO DIRECTO</span><h2 id="install-title">Instalar Rutas Managua</h2></div><button type="button" id="install-close" class="icon-button" aria-label="Cerrar"><span data-icon="close"></span></button></div><p id="install-instructions"></p><p>Cuando la instales, se abrirá en su propia ventana y podrás volver a entrar desde el ícono de bus.</p><button type="button" id="install-done" class="button primary">Entendido</button></dialog>
   <dialog id="sources-dialog" aria-labelledby="sources-title">
     <div class="dialog-heading"><div><span class="eyebrow">CONOCE LOS DATOS</span><h2 id="sources-title">Una referencia histórica</h2></div><button type="button" id="sources-close" class="icon-button" aria-label="Cerrar fuentes"><span data-icon="close"></span></button></div>
     <div class="confidence"><span data-icon="history"></span><div><strong>Confianza: histórico, sin confirmar</strong><p>Una coincidencia en el archivo no confirma que el bus opere hoy ni que conserve todas sus paradas.</p></div></div>
