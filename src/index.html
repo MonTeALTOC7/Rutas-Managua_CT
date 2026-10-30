@@ -31,6 +31,7 @@
   <div id="update-notice" class="update-notice" role="status" hidden><span data-icon="info"></span><p><strong>Hay una versión nueva.</strong><span> Cierra las pestañas abiertas de Rutas Managua y vuelve a entrar para cargarla.</span></p><button id="update-dismiss" class="icon-button" type="button" aria-label="Cerrar aviso"><span data-icon="close"></span></button></div>
   <main class="workspace">
     <section class="sidebar" id="controls" aria-label="Planifica y explora">
+      <button id="panel-toggle" class="map-panel-toggle" type="button" aria-expanded="true" aria-controls="controls"><span data-icon="expand"></span><span id="panel-toggle-label">Ampliar mapa</span></button>
       <nav class="tabs" aria-label="Modo de consulta">
         <button type="button" class="tab active" data-tab="journey" aria-pressed="true"><span data-icon="route"></span>Mi viaje</button>
         <button type="button" class="tab" data-tab="routes" aria-pressed="false"><span data-icon="bus"></span>Rutas</button>
@@ -78,7 +79,7 @@
     <section class="map-section" aria-label="Mapa de Managua">
       <div id="map" aria-label="Mapa interactivo. Para elegir un punto, activa Elegir en mapa." tabindex="0"></div>
       <div class="map-title"><span class="eyebrow">NICARAGUA</span><strong>Managua</strong><span>y Ciudad Sandino</span></div>
-      <div class="map-controls"><button id="map-home" class="icon-button" type="button" aria-label="Ver Managua y Ciudad Sandino" title="Ver toda el área"><span data-icon="expand"></span></button></div>
+      <div class="map-controls"><label class="map-base-control" title="Cambiar el mapa base"><span data-icon="layers"></span><select id="map-base-selector" aria-label="Mapa base"><option value="streets">Calles · OSM</option><option value="satellite">Satélite · Esri</option></select></label><button id="map-home" class="icon-button" type="button" aria-label="Ver Managua y Ciudad Sandino" title="Ver toda el área"><span data-icon="expand"></span></button></div>
       <div id="map-prompt" class="map-prompt" hidden><span id="map-prompt-text"></span><button type="button" id="cancel-pick" aria-label="Cancelar selección"><span data-icon="close"></span></button></div>
       <div class="map-legend"><span class="legend-line"></span><span id="map-caption">Red histórica · selecciona una ruta</span></div>
       <div id="map-status" class="map-status" hidden>Sin conexión: trazados disponibles, mapa base no disponible.</div>
