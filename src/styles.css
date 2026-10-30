@@ -6,12 +6,7 @@
 @media(max-width:360px){.app-header{padding:10px}.brand strong{font-size:17px}.header-actions .button{padding:7px}.header-actions .button span:last-child{font-size:10px}.panel{padding:19px 16px}.field-tools button{font-size:10px}.preferences{font-size:10px}.tab{gap:5px;font-size:11px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 
-/* Marca y foto de bienvenida */
 .brand-credit{font-size:9px!important;letter-spacing:.04em!important;font-weight:500!important;color:var(--muted)}
-.bus-photo{margin:18px 0 8px;text-align:left;overflow:hidden;border-radius:12px;background:#e7eadf}
-.bus-photo img{display:block;width:100%;height:150px;object-fit:cover;object-position:center 48%}
-.bus-photo figcaption{padding:7px 10px;font-size:10px;line-height:1.4;color:var(--muted)}
-.bus-photo figcaption a{color:var(--green);text-underline-offset:2px}
 /* Ajustes de interacción en pantallas táctiles */
 @media(max-width:760px){
   .workspace{min-height:0}
@@ -21,7 +16,6 @@
   .field-tools button{min-height:42px}
   .input-wrap input{min-height:50px}
   .preferences select{min-height:42px}
-  .bus-photo img{height:clamp(130px,38vw,190px)}
   .brand-credit{font-size:8px!important}
 }
 @media(max-width:380px){
@@ -31,12 +25,10 @@
   .brand strong{font-size:17px}
   .header-actions .button{min-width:42px;padding-inline:6px}
   .header-actions .button span:last-child{font-size:10px}
-  .bus-photo img{height:128px}
 }
 
 .install-banner{position:fixed;z-index:2400;right:22px;bottom:max(20px,env(safe-area-inset-bottom));display:flex;align-items:center;gap:12px;width:min(440px,calc(100vw - 32px));padding:15px;border:1px solid #dce5d8;border-radius:16px;background:var(--paper);box-shadow:0 12px 40px #173c3430;color:var(--ink)}
-.install-banner-icon{display:grid;place-items:center;flex:0 0 42px;height:42px;border-radius:12px;background:var(--green);color:var(--accent)}
-.install-banner-icon svg{width:23px;height:23px}
+.install-banner-icon{display:block;flex:0 0 42px;width:42px;height:42px;object-fit:cover;border-radius:10px}
 .install-banner p{flex:1;font-size:12px;line-height:1.4}
 .install-banner p strong,.install-banner p span{display:block}
 .install-banner p strong{font-size:14px;margin-bottom:3px}
@@ -51,8 +43,7 @@
 #install-done{width:auto;min-width:120px;justify-content:center;margin-top:8px}
 @media(max-width:760px){
  .install-banner{right:12px;bottom:max(12px,env(safe-area-inset-bottom));width:calc(100vw - 24px);gap:9px;padding:12px;border-radius:14px}
- .install-banner-icon{flex-basis:36px;height:36px}
- .install-banner-icon svg{width:20px;height:20px}
+ .install-banner-icon{flex-basis:36px;width:36px;height:36px}
  .install-banner p{font-size:11px}
  .install-banner p strong{font-size:13px}
  .install-banner .button.primary{min-height:42px;padding:8px 11px;font-size:12px}
