@@ -5,3 +5,31 @@
 @media(max-width:760px){.app-header{padding:12px 16px;min-height:70px}.brand{gap:9px}.brand img{width:34px;height:34px}.brand strong{font-size:19px}.brand small{font-size:7px;letter-spacing:1.1px}.header-actions{gap:0}.header-actions .button{padding:8px;gap:4px;font-size:11px}.header-actions svg{width:17px}.history-banner{padding:9px 15px;gap:7px;font-size:10px;align-items:flex-start;min-height:48px}.history-banner p{line-height:1.45}.history-banner p strong{display:block}.history-banner svg{margin-top:2px;width:15px}.history-banner a{font-size:10px;align-self:center}.workspace{display:flex;flex-direction:column;height:auto;min-height:0}.map-section{order:0;height:34svh;min-height:220px;max-height:330px;border-bottom:1px solid #dce4d4}.sidebar{order:1;overflow:visible;border:0;min-height:calc(66svh - 120px)}.tabs{position:sticky;top:0;padding:0 14px;min-height:51px}.tab{font-size:12px;min-height:51px;gap:7px;padding-bottom:11px}.panel{padding:22px 22px 16px}.section-heading{margin-bottom:20px}h1{font-size:26px}.eyebrow{font-size:8px}.heading-symbol{width:35px;height:35px}.map-title{top:13px;left:14px;padding:10px 13px;border-radius:10px}.map-title strong{font-size:17px}.map-title>span:last-child{font-size:9px}.map-title .eyebrow{font-size:7px;margin-bottom:3px}.map-controls{top:12px;right:12px}.map-controls .icon-button{height:36px;min-width:36px}.map-legend{bottom:23px;left:13px;font-size:9px;padding:6px 8px;max-width:calc(100% - 72px)}.leaflet-bottom.leaflet-right .leaflet-control-zoom{margin-bottom:30px;margin-right:12px}.leaflet-control-zoom a{width:34px!important;height:34px!important;line-height:34px!important;font-size:18px!important}.leaflet-control-attribution{font-size:9px!important}.map-prompt{top:12px;font-size:12px;max-width:calc(100% - 24px)}.map-status{left:13px;bottom:57px;font-size:10px;max-width:calc(100% - 75px)}.field-tools button{min-height:36px;font-size:11px}.welcome{margin-top:23px;padding:21px 17px}.panel-footer{padding:16px 22px max(20px,env(safe-area-inset-bottom));font-size:10px}dialog{padding:21px}.dialog-heading h2{font-size:21px}.source-facts>div{grid-template-columns:110px 1fr}.toast{bottom:max(16px,env(safe-area-inset-bottom));font-size:12px}}
 @media(max-width:360px){.app-header{padding:10px}.brand strong{font-size:17px}.header-actions .button{padding:7px}.header-actions .button span:last-child{font-size:10px}.panel{padding:19px 16px}.field-tools button{font-size:10px}.preferences{font-size:10px}.tab{gap:5px;font-size:11px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* Marca y foto de bienvenida */
+.brand-credit{font-size:9px!important;letter-spacing:.04em!important;font-weight:500!important;color:var(--muted)}
+.bus-photo{margin:18px 0 8px;text-align:left;overflow:hidden;border-radius:12px;background:#e7eadf}
+.bus-photo img{display:block;width:100%;height:150px;object-fit:cover;object-position:center 48%}
+.bus-photo figcaption{padding:7px 10px;font-size:10px;line-height:1.4;color:var(--muted)}
+.bus-photo figcaption a{color:var(--green);text-underline-offset:2px}
+/* Ajustes de interacción en pantallas táctiles */
+@media(max-width:760px){
+  .workspace{min-height:0}
+  .map-section{height:36svh;min-height:240px;max-height:360px}
+  .sidebar{min-height:0}
+  .tab{min-height:52px}
+  .field-tools button{min-height:42px}
+  .input-wrap input{min-height:50px}
+  .preferences select{min-height:42px}
+  .bus-photo img{height:clamp(130px,38vw,190px)}
+  .brand-credit{font-size:8px!important}
+}
+@media(max-width:380px){
+  .app-header{padding-inline:10px}
+  .brand{gap:7px}
+  .brand img{width:32px;height:32px}
+  .brand strong{font-size:17px}
+  .header-actions .button{min-width:42px;padding-inline:6px}
+  .header-actions .button span:last-child{font-size:10px}
+  .bus-photo img{height:128px}
+}
