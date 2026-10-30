@@ -8,7 +8,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Rutas Managua · Encuentra tu recorrido</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="icon" href="./icons/mark.svg" type="image/svg+xml">
+  <link rel="icon" href="./icons/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="./styles.css">
@@ -19,7 +19,7 @@
   <a class="skip-link" href="#controls">Ir a los controles</a>
   <header class="app-header">
     <a class="brand" href="./" aria-label="Rutas Managua, inicio">
-      <img src="./icons/mark.svg" width="40" height="40" alt="">
+      <img src="./icons/icon-192.png" width="40" height="40" alt="">
       <span><strong>Rutas <em>Managua</em></strong><small>MANAGUA + CIUDAD SANDINO</small><small class="brand-credit">Por Carlos Tijerino</small></span>
     </a>
     <div class="header-actions">
@@ -31,6 +31,7 @@
   <div id="update-notice" class="update-notice" role="status" hidden><span data-icon="info"></span><p><strong>Hay una versión nueva.</strong><span> Cierra las pestañas abiertas de Rutas Managua y vuelve a entrar para cargarla.</span></p><button id="update-dismiss" class="icon-button" type="button" aria-label="Cerrar aviso"><span data-icon="close"></span></button></div>
   <main class="workspace">
     <section class="sidebar" id="controls" aria-label="Planifica y explora">
+      <button id="panel-toggle" class="map-panel-toggle" type="button" aria-expanded="true" aria-controls="controls"><span data-icon="expand"></span><span id="panel-toggle-label">Ampliar mapa</span></button>
       <nav class="tabs" aria-label="Modo de consulta">
         <button type="button" class="tab active" data-tab="journey" aria-pressed="true"><span data-icon="route"></span>Mi viaje</button>
         <button type="button" class="tab" data-tab="routes" aria-pressed="false"><span data-icon="bus"></span>Rutas</button>
@@ -56,7 +57,7 @@
           <button class="button primary" id="plan-button" type="submit" disabled>Buscar recorrido<span data-icon="arrow"></span></button>
         </form>
         <div id="journey-results" aria-live="polite"></div>
-        <div id="welcome" class="welcome"><div class="mini-route"><span>A</span><i></i><span data-icon="bus"></span><i></i><span>B</span></div><figure class="bus-photo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Bus_station_in_Managua%2C_Nicaragua_2023.jpg/1280px-Bus_station_in_Managua%2C_Nicaragua_2023.jpg" alt="Autobús en una estación de Managua, fotografía de 2023" loading="lazy" decoding="async"><figcaption>Un bus en Managua · foto de Ridiculopathy, CC0 <a href="https://commons.wikimedia.org/wiki/File:Bus_station_in_Managua,_Nicaragua_2023.jpg" target="_blank" rel="noopener">Ver foto</a></figcaption></figure><h2>Tu recorrido, paso a paso</h2><p>Elige dos lugares para explorar dónde abordar, en qué sentido viajar y dónde bajar.</p><p class="hint">Las distancias de acceso son en línea recta. El camino a pie y la operación del bus requieren confirmación.</p></div>
+        <div id="welcome" class="welcome"><div class="mini-route"><span>A</span><i></i><span data-icon="bus"></span><i></i><span>B</span></div><h2>Tu recorrido, paso a paso</h2><p>Elige dos lugares para explorar dónde abordar, en qué sentido viajar y dónde bajar.</p><p class="hint">Las distancias de acceso son en línea recta. El camino a pie y la operación del bus requieren confirmación.</p></div>
       </div>
       <div class="panel" id="routes-panel" hidden>
         <span class="eyebrow">EXPLORA EL ARCHIVO</span><h1>Busca tu ruta</h1>
@@ -78,15 +79,15 @@
     <section class="map-section" aria-label="Mapa de Managua">
       <div id="map" aria-label="Mapa interactivo. Para elegir un punto, activa Elegir en mapa." tabindex="0"></div>
       <div class="map-title"><span class="eyebrow">NICARAGUA</span><strong>Managua</strong><span>y Ciudad Sandino</span></div>
-      <div class="map-controls"><button id="map-home" class="icon-button" type="button" aria-label="Ver Managua y Ciudad Sandino" title="Ver toda el área"><span data-icon="expand"></span></button></div>
+      <div class="map-controls"><label class="map-base-control" title="Cambiar el mapa base"><span data-icon="layers"></span><select id="map-base-selector" aria-label="Mapa base"><option value="streets">Calles · OSM</option><option value="satellite">Satélite · Esri</option></select></label><button id="map-home" class="icon-button" type="button" aria-label="Ver Managua y Ciudad Sandino" title="Ver toda el área"><span data-icon="expand"></span></button></div>
       <div id="map-prompt" class="map-prompt" hidden><span id="map-prompt-text"></span><button type="button" id="cancel-pick" aria-label="Cancelar selección"><span data-icon="close"></span></button></div>
       <div class="map-legend"><span class="legend-line"></span><span id="map-caption">Red histórica · selecciona una ruta</span></div>
       <div id="map-status" class="map-status" hidden>Sin conexión: trazados disponibles, mapa base no disponible.</div>
     </section>
   </main>
-  <aside id="install-banner" class="install-banner" role="region" aria-label="Instala Rutas Managua" hidden><span class="install-banner-icon" data-icon="bus"></span><p><strong>Instala Rutas Managua</strong><span> Accede más rápido y úsala como una app.</span></p><button id="install-banner-action" class="button primary" type="button">Instalar</button><button id="install-banner-close" class="icon-button" type="button" aria-label="Ahora no"><span data-icon="close"></span></button></aside>
+  <aside id="install-banner" class="install-banner" role="region" aria-label="Instala Rutas Managua" hidden><img class="install-banner-icon" src="./icons/icon-192.png" alt="" width="42" height="42"><p><strong>Instala Rutas Managua</strong><span> Accede más rápido y úsala como una app.</span></p><button id="install-banner-action" class="button primary" type="button">Instalar</button><button id="install-banner-close" class="icon-button" type="button" aria-label="Ahora no"><span data-icon="close"></span></button></aside>
   <div id="status" class="toast" role="status" aria-live="polite" hidden></div>
-  <dialog id="install-dialog" aria-labelledby="install-title"><div class="dialog-heading"><div><span class="eyebrow">ACCESO DIRECTO</span><h2 id="install-title">Instalar Rutas Managua</h2></div><button type="button" id="install-close" class="icon-button" aria-label="Cerrar"><span data-icon="close"></span></button></div><p id="install-instructions"></p><p>Cuando la instales, se abrirá en su propia ventana y podrás volver a entrar desde el ícono de bus.</p><button type="button" id="install-done" class="button primary">Entendido</button></dialog>
+  <dialog id="install-dialog" aria-labelledby="install-title"><div class="dialog-heading"><div><span class="eyebrow">ACCESO DIRECTO</span><h2 id="install-title">Instalar Rutas Managua</h2></div><button type="button" id="install-close" class="icon-button" aria-label="Cerrar"><span data-icon="close"></span></button></div><p id="install-instructions"></p><p>Cuando la instales, se abrirá en su propia ventana y podrás volver a entrar desde el ícono de la app.</p><button type="button" id="install-done" class="button primary">Entendido</button></dialog>
   <dialog id="sources-dialog" aria-labelledby="sources-title">
     <div class="dialog-heading"><div><span class="eyebrow">CONOCE LOS DATOS</span><h2 id="sources-title">Una referencia histórica</h2></div><button type="button" id="sources-close" class="icon-button" aria-label="Cerrar fuentes"><span data-icon="close"></span></button></div>
     <div class="confidence"><span data-icon="history"></span><div><strong>Confianza: histórico, sin confirmar</strong><p>Una coincidencia en el archivo no confirma que el bus opere hoy ni que conserve todas sus paradas.</p></div></div>
@@ -97,7 +98,7 @@
     <p>La app y los datos históricos quedan disponibles sin conexión después de la primera carga completa. No se descargan teselas para uso offline. Sin internet no hay búsqueda nueva de direcciones ni mapa base garantizado.</p>
     <button type="button" id="clear-search-cache" class="button secondary">Borrar búsquedas guardadas</button>
     <h3>Procedencia y licencias</h3><p>Geodatos derivados de MapaNica y © contribuidores de OpenStreetMap, bajo <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Los datos temporales del feed no forman parte de esta app.</p>
-    <ul class="source-links"><li><a href="https://mobilitydatabase.org/feeds/gtfs/mdb-1021" target="_blank" rel="noopener">Ficha del archivo GTFS ↗</a></li><li><a href="https://github.com/mapanica/datos/tree/d34a60369a66bc9ee49633d753222f5b2ce12867" target="_blank" rel="noopener">Datos de MapaNica y condiciones ↗</a></li><li><a href="./docs/AUDITORIA_FUENTES_TRANSPORTE.md" target="_blank">Auditoría completa ↗</a></li><li><a href="./data/network.json" download>Descargar datos espaciales y procedencia</a></li><li><a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Reportar un problema del mapa base ↗</a></li></ul>
+    <ul class="source-links"><li><a href="https://commons.wikimedia.org/wiki/File:Bus_station_in_Managua,_Nicaragua_2023.jpg" target="_blank" rel="noopener">Fotografía del ícono: Ridiculopathy · CC0 1.0 ↗</a></li><li><a href="https://mobilitydatabase.org/feeds/gtfs/mdb-1021" target="_blank" rel="noopener">Ficha del archivo GTFS ↗</a></li><li><a href="https://github.com/mapanica/datos/tree/d34a60369a66bc9ee49633d753222f5b2ce12867" target="_blank" rel="noopener">Datos de MapaNica y condiciones ↗</a></li><li><a href="./docs/AUDITORIA_FUENTES_TRANSPORTE.md" target="_blank">Auditoría completa ↗</a></li><li><a href="./data/network.json" download>Descargar datos espaciales y procedencia</a></li><li><a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Reportar un problema del mapa base ↗</a></li></ul>
   </dialog>
   <noscript><div class="noscript">Activa JavaScript para consultar el mapa y las rutas.</div></noscript>
 </body>

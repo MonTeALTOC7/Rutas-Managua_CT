@@ -14,6 +14,7 @@ const paths = {
   close: '<path d="m6 6 12 12M6 18 18 6"/>',
   arrow: '<path d="M4 12h16m-6-6 6 6-6 6"/>',
   expand: '<path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/>',
+  layers: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/>',
   history: '<path d="M3 11a9 9 0 1 1 2 7M3 4v7h7m2-5v6l4 2"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',
   download: '<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',
@@ -450,7 +451,8 @@ function connectionStatus() {
     if (!offline && !map.hasLayer(baseLayer)) baseLayer.addTo(map);
   }
   $('#map-status').hidden = !offline && !tileFailed;
-  $('#map-status').textContent = offline ? 'Sin conexión: datos guardados; mapa base no disponible.' : 'El mapa base no está respondiendo. Los trazados históricos siguen disponibles.';
+  const baseName = $('#map-base-selector')?.value === 'satellite' ? 'satélite Esri' : 'calles OSM';
+  $('#map-status').textContent = offline ? 'Sin conexión: trazados históricos disponibles; mapa base no disponible.' : `No se pudo cargar el mapa de ${baseName}. Los trazados históricos siguen visibles.`;
 }
 window.addEventListener('offline', connectionStatus);
 window.addEventListener('online', () => { tileFailed = false; connectionStatus(); });
@@ -466,13 +468,40 @@ async function start() {
       maxBounds: [[11.95, -86.55], [12.35, -86.05]], maxBoundsViscosity: .9 }).setView([12.140, -86.284], 12);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     map.attributionControl.setPrefix(false);
-    map.attributionControl.addAttribution('Rutas: <a href="https://github.com/mapanica/datos">MapaNica</a> / OSM · 2020');
-    // Keep OSM attribution even when offline and the tile layer is removed.
-    map.attributionControl.addAttribution(config.tileAttribution);
-    baseLayer = L.tileLayer(config.tileUrl, { attribution: config.tileAttribution, maxZoom: 19,
-      updateWhenIdle: true, keepBuffer: 0, bounds: [[11.95, -86.55], [12.35, -86.05]] });
-    baseLayer.on('tileerror', () => { tileFailed = true; connectionStatus(); });
-    baseLayer.on('load', () => { /* A partial tile failure remains visible until the next successful connection. */ });
+    map.attributionControl.addAttribution('Rutas históricas: <a href="https://github.com/mapanica/datos">MapaNica</a> / OSM · 2020');
+    const tileOptions = { maxZoom: 19, updateWhenIdle: true, keepBuffer: 0, bounds: [[11.95, -86.55], [12.35, -86.05]] };
+    const baseLayers = {
+      streets: L.tileLayer(config.tileUrl, { ...tileOptions, attribution: config.tileAttribution }),
+      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        ...tileOptions,
+        attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a> — Source: Esri, Vantor, Earthstar Geographics, and GIS User Community'
+      })
+    };
+    for (const [name, layer] of Object.entries(baseLayers)) {
+      layer.on('tileerror', () => {
+        if (baseLayer !== layer) return;
+        tileFailed = true;
+        connectionStatus();
+      });
+      layer.on('load', () => { if (baseLayer === layer) tileFailed = false; });
+    }
+    let initialBase = 'streets';
+    try { initialBase = localStorage.getItem('rutas:map-base') || 'streets'; } catch {}
+    if (!baseLayers[initialBase]) initialBase = 'streets';
+    baseLayer = baseLayers[initialBase];
+    $('#map-base-selector').value = initialBase;
+    map.getContainer().classList.toggle('basemap-satellite', initialBase === 'satellite');
+    $('#map-base-selector').addEventListener('change', event => {
+      const nextName = event.target.value;
+      if (!baseLayers[nextName]) return;
+      if (map.hasLayer(baseLayer)) map.removeLayer(baseLayer);
+      baseLayer = baseLayers[nextName];
+      map.getContainer().classList.toggle('basemap-satellite', nextName === 'satellite');
+      tileFailed = false;
+      try { localStorage.setItem('rutas:map-base', nextName); } catch {}
+      if (navigator.onLine) baseLayer.addTo(map);
+      connectionStatus();
+    });
     if (navigator.onLine) baseLayer.addTo(map);
     overview = L.layerGroup().addTo(map); focusLayer = L.layerGroup().addTo(map); pointLayer = L.layerGroup().addTo(map); travelLayer = L.layerGroup().addTo(map);
     for (const shape of Object.values(network.shapes)) L.polyline(splitGaps(shape), { color: '#41705b', weight: 2, opacity: .20, interactive: false }).addTo(overview);
@@ -488,6 +517,23 @@ async function start() {
       }
     });
     $('#map-home').addEventListener('click', () => map.fitBounds([[12.05, -86.43], [12.22, -86.15]], { animate: false }));
+    const workspace = $('.workspace');
+    $('#panel-toggle').addEventListener('click', () => {
+      const mapFocused = workspace.classList.toggle('map-focus');
+      $('#panel-toggle').setAttribute('aria-expanded', String(!mapFocused));
+      $('#panel-toggle-label').textContent = mapFocused ? 'Volver al recorrido' : 'Ampliar mapa';
+      $('#panel-toggle [data-icon]').innerHTML = icon(mapFocused ? 'route' : 'expand');
+      requestAnimationFrame(() => map.invalidateSize({ pan: false }));
+    });
+    matchMedia('(max-width: 760px)').addEventListener('change', event => {
+      if (!event.matches && workspace.classList.contains('map-focus')) {
+        workspace.classList.remove('map-focus');
+        $('#panel-toggle').setAttribute('aria-expanded', 'true');
+        $('#panel-toggle-label').textContent = 'Ampliar mapa';
+        $('#panel-toggle [data-icon]').innerHTML = icon('expand');
+        requestAnimationFrame(() => map.invalidateSize({ pan: false }));
+      }
+    });
     new ResizeObserver(() => map.invalidateSize()).observe($('.map-section'));
     $('#data-summary').textContent = `${network.routes.length} rutas · archivo espacial de 2020`;
     const excluded = network.variants.filter(v => !v.planningEligible).length;
