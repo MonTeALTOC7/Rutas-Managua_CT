@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#123e35">
+  <meta name="description" content="Explora rutas de bus de Managua y Ciudad Sandino con datos históricos y su procedencia visible.">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Rutas Managua · Encuentra tu recorrido</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/mark.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./vendor/leaflet/leaflet.js" defer></script>
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#controls">Ir a los controles</a>
+  <header class="app-header">
+    <a class="brand" href="./" aria-label="Rutas Managua, inicio">
+      <img src="./icons/mark.svg" width="40" height="40" alt="">
+      <span><strong>Rutas <em>Managua</em></strong><small>MANAGUA + CIUDAD SANDINO</small></span>
+    </a>
+    <div class="header-actions">
+      <button id="install" class="button subtle" type="button"><span data-icon="download"></span><span>Instalar</span></button>
+      <button id="sources-open" class="button subtle" type="button"><span data-icon="info"></span><span>Datos</span></button>
+    </div>
+  </header>
+  <div class="history-banner"><span data-icon="history"></span><p><strong>Explorador histórico</strong><span> Datos espaciales de 2020. Servicio actual sin confirmar.</span></p><a href="#sources" id="history-details">Ver fuentes</a></div>
+  <main class="workspace">
+    <section class="sidebar" id="controls" aria-label="Planifica y explora">
+      <nav class="tabs" aria-label="Modo de consulta">
+        <button type="button" class="tab active" data-tab="journey" aria-pressed="true"><span data-icon="route"></span>Mi viaje</button>
+        <button type="button" class="tab" data-tab="routes" aria-pressed="false"><span data-icon="bus"></span>Rutas</button>
+        <button type="button" class="tab" data-tab="nearby" aria-pressed="false"><span data-icon="pin"></span>Cerca de mí</button>
+      </nav>
+      <div class="panel" id="journey-panel">
+        <div class="section-heading"><div><span class="eyebrow">MOVERSE POR LA CIUDAD</span><h1>¿Adónde vamos?</h1></div><span class="heading-symbol" data-icon="arrow"></span></div>
+        <form id="journey-form">
+          <div class="endpoint" data-field="origin">
+            <label for="origin-input"><span class="point-dot origin-dot"></span>Origen</label>
+            <div class="input-wrap"><input id="origin-input" autocomplete="off" placeholder="Dirección, lugar o parada" aria-describedby="search-help"><button type="button" class="icon-button clear-point" data-field="origin" aria-label="Borrar origen"><span data-icon="close"></span></button></div>
+            <div class="field-tools"><button type="button" data-gps="origin"><span data-icon="locate"></span>Mi ubicación</button><button type="button" data-pick="origin"><span data-icon="pin"></span>Elegir en mapa</button><button type="button" data-address="origin" aria-label="Buscar dirección del origen"><span data-icon="search"></span>Buscar</button></div>
+            <div class="suggestions" id="origin-suggestions" aria-live="polite"></div>
+          </div>
+          <div class="endpoint" data-field="destination">
+            <label for="destination-input"><span class="point-dot destination-dot"></span>Destino</label>
+            <div class="input-wrap"><input id="destination-input" autocomplete="off" placeholder="¿A qué lugar quieres llegar?" aria-describedby="search-help"><button type="button" class="icon-button clear-point" data-field="destination" aria-label="Borrar destino"><span data-icon="close"></span></button></div>
+            <div class="field-tools"><button type="button" data-gps="destination"><span data-icon="locate"></span>Mi ubicación</button><button type="button" data-pick="destination"><span data-icon="pin"></span>Elegir en mapa</button><button type="button" data-address="destination" aria-label="Buscar dirección del destino"><span data-icon="search"></span>Buscar</button></div>
+            <div class="suggestions" id="destination-suggestions" aria-live="polite"></div>
+          </div>
+          <p id="search-help" class="hint">Elige una coincidencia. «Buscar» consulta direcciones en OpenStreetMap; las sugerencias de paradas son locales.</p>
+          <div class="preferences"><label for="walk-radius">Paradas hasta <select id="walk-radius"><option value="300">300 m</option><option value="600" selected>600 m</option><option value="1000">1 km</option></select></label><label class="check"><input type="checkbox" id="transfers" checked>Un transbordo</label></div>
+          <button class="button primary" id="plan-button" type="submit" disabled>Buscar recorrido<span data-icon="arrow"></span></button>
+        </form>
+        <div id="journey-results" aria-live="polite"></div>
+        <div id="welcome" class="welcome"><div class="mini-route"><span>A</span><i></i><span data-icon="bus"></span><i></i><span>B</span></div><h2>Tu recorrido, paso a paso</h2><p>Elige dos lugares para explorar dónde abordar, en qué sentido viajar y dónde bajar.</p><p class="hint">Las distancias de acceso son en línea recta. El camino a pie y la operación del bus requieren confirmación.</p></div>
+      </div>
+      <div class="panel" id="routes-panel" hidden>
+        <span class="eyebrow">EXPLORA EL ARCHIVO</span><h1>Busca tu ruta</h1>
+        <label class="sr-only" for="route-query">Número o nombre de ruta</label><div class="search-box"><span data-icon="search"></span><input type="search" id="route-query" placeholder="Ej. 110, 125CS, MR4" autocomplete="off"></div>
+        <p class="hint" id="routes-count">Cargando rutas…</p>
+        <div id="route-list"></div><div id="route-detail"></div>
+      </div>
+      <div class="panel" id="nearby-panel" hidden>
+        <span class="eyebrow">ALREDEDOR DE UN PUNTO</span><h1>¿Qué pasa cerca?</h1>
+        <p class="intro">Encuentra paradas y sentidos del archivo histórico alrededor del lugar que elijas.</p>
+        <div class="endpoint" data-field="nearby"><label for="nearby-input">Punto de referencia</label><div class="input-wrap"><input id="nearby-input" autocomplete="off" placeholder="Dirección, lugar o parada"><button type="button" class="icon-button clear-point" data-field="nearby" aria-label="Borrar punto cercano"><span data-icon="close"></span></button></div>
+          <div class="field-tools"><button type="button" data-gps="nearby"><span data-icon="locate"></span>Mi ubicación</button><button type="button" data-pick="nearby"><span data-icon="pin"></span>En el mapa</button><button type="button" data-address="nearby"><span data-icon="search"></span>Buscar</button></div><div id="nearby-suggestions" class="suggestions" aria-live="polite"></div>
+        </div>
+        <button id="use-map-center" class="button secondary" type="button"><span data-icon="crosshair"></span>Usar el centro del mapa</button>
+        <div id="nearby-results" aria-live="polite"></div>
+      </div>
+      <footer class="panel-footer"><span class="live-dot"></span><span id="data-summary">Preparando el archivo histórico…</span><button type="button" id="footer-sources">Fuente y confianza<span data-icon="external"></span></button></footer>
+    </section>
+    <section class="map-section" aria-label="Mapa de Managua">
+      <div id="map" aria-label="Mapa interactivo. Para elegir un punto, activa Elegir en mapa." tabindex="0"></div>
+      <div class="map-title"><span class="eyebrow">NICARAGUA</span><strong>Managua</strong><span>y Ciudad Sandino</span></div>
+      <div class="map-controls"><button id="map-home" class="icon-button" type="button" aria-label="Ver Managua y Ciudad Sandino" title="Ver toda el área"><span data-icon="expand"></span></button></div>
+      <div id="map-prompt" class="map-prompt" hidden><span id="map-prompt-text"></span><button type="button" id="cancel-pick" aria-label="Cancelar selección"><span data-icon="close"></span></button></div>
+      <div class="map-legend"><span class="legend-line"></span><span id="map-caption">Red histórica · selecciona una ruta</span></div>
+      <div id="map-status" class="map-status" hidden>Sin conexión: trazados disponibles, mapa base no disponible.</div>
+    </section>
+  </main>
+  <div id="status" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="sources-dialog" aria-labelledby="sources-title">
+    <div class="dialog-heading"><div><span class="eyebrow">CONOCE LOS DATOS</span><h2 id="sources-title">Una referencia histórica</h2></div><button type="button" id="sources-close" class="icon-button" aria-label="Cerrar fuentes"><span data-icon="close"></span></button></div>
+    <div class="confidence"><span data-icon="history"></span><div><strong>Confianza: histórico, sin confirmar</strong><p>Una coincidencia en el archivo no confirma que el bus opere hoy ni que conserve todas sus paradas.</p></div></div>
+    <dl class="source-facts"><div><dt>Geometrías y paradas</dt><dd>MapaNica / OpenStreetMap · publicadas el 27-oct-2020</dd></div><div><dt>Periodo del GTFS</dt><dd>Finalizó el 31-ene-2023</dd></div><div><dt>Copia examinada</dt><dd>Mobility Database · 8-feb-2024</dd></div><div><dt>Auditoría de fuentes</dt><dd>29-oct-2026 · no es una verificación en campo</dd></div></dl>
+    <h3>Qué puedes consultar</h3><p>46 rutas, 92 variantes y 1,712 paradas de abordaje del archivo. Los sentidos se calculan de forma independiente. No se mezclan con las geometrías de 2016 ni con ediciones recientes de OSM sin contrastarlas.</p>
+    <p id="quality-summary"></p><p>Los transbordos solo se proponen en la misma parada del archivo. Las distancias de acceso son aproximadas y no representan caminos peatonales comprobados.</p>
+    <h3>Privacidad y conexión</h3><p>El GPS se solicita solo al tocar «Mi ubicación» o iniciar el modo viaje. El modo viaje sigue únicamente tu ubicación mientras está activo; se pausa al ocultar la app y no guarda tu posición. No hay seguimiento de buses. Los puntos del viaje se mantienen en memoria. Al buscar una dirección, el texto se envía a Nominatim; se guardan hasta 20 búsquedas en este navegador. El mapa en línea solicita teselas a OpenStreetMap.</p>
+    <p>La app y los datos históricos quedan disponibles sin conexión después de la primera carga completa. No se descargan teselas para uso offline. Sin internet no hay búsqueda nueva de direcciones ni mapa base garantizado.</p>
+    <button type="button" id="clear-search-cache" class="button secondary">Borrar búsquedas guardadas</button>
+    <h3>Procedencia y licencias</h3><p>Geodatos derivados de MapaNica y © contribuidores de OpenStreetMap, bajo <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Los datos temporales del feed no forman parte de esta app.</p>
+    <ul class="source-links"><li><a href="https://mobilitydatabase.org/feeds/gtfs/mdb-1021" target="_blank" rel="noopener">Ficha del archivo GTFS ↗</a></li><li><a href="https://github.com/mapanica/datos/tree/d34a60369a66bc9ee49633d753222f5b2ce12867" target="_blank" rel="noopener">Datos de MapaNica y condiciones ↗</a></li><li><a href="./docs/AUDITORIA_FUENTES_TRANSPORTE.md" target="_blank">Auditoría completa ↗</a></li><li><a href="./data/network.json" download>Descargar datos espaciales y procedencia</a></li><li><a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Reportar un problema del mapa base ↗</a></li></ul>
+  </dialog>
+  <noscript><div class="noscript">Activa JavaScript para consultar el mapa y las rutas.</div></noscript>
+</body>
+</html>
