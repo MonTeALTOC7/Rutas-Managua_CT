@@ -443,12 +443,19 @@ if (isInstalledApp()) {
   setTimeout(showInstallBanner, 1400);
 }
 
-let baseLayer, tileFailed = false;
+let baseLayer, referenceLayers = [], tileFailed = false;
 function connectionStatus() {
   const offline = !navigator.onLine;
   if (map && baseLayer) {
-    if (offline && map.hasLayer(baseLayer)) map.removeLayer(baseLayer);
-    if (!offline && !map.hasLayer(baseLayer)) baseLayer.addTo(map);
+    if (offline) {
+      if (map.hasLayer(baseLayer)) map.removeLayer(baseLayer);
+      referenceLayers.forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
+    } else {
+      if (!map.hasLayer(baseLayer)) baseLayer.addTo(map);
+      if ($('#map-base-selector')?.value === 'satellite') {
+        referenceLayers.forEach(layer => { if (!map.hasLayer(layer)) layer.addTo(map); });
+      }
+    }
   }
   $('#map-status').hidden = !offline && !tileFailed;
   const baseName = $('#map-base-selector')?.value === 'satellite' ? 'satélite Esri' : 'calles OSM';
@@ -477,6 +484,17 @@ async function start() {
         attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a> — Source: Esri, Vantor, Earthstar Geographics, and GIS User Community'
       })
     };
+    // Transparent Esri reference tiles add street names and place labels over imagery.
+    referenceLayers = [
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+        ...tileOptions,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Esri, HERE, Garmin'
+      }),
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+        ...tileOptions,
+        attribution: 'Esri, HERE, Garmin, and GIS user community'
+      })
+    ];
     for (const [name, layer] of Object.entries(baseLayers)) {
       layer.on('tileerror', () => {
         if (baseLayer !== layer) return;
@@ -495,14 +513,21 @@ async function start() {
       const nextName = event.target.value;
       if (!baseLayers[nextName]) return;
       if (map.hasLayer(baseLayer)) map.removeLayer(baseLayer);
+      referenceLayers.forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
       baseLayer = baseLayers[nextName];
       map.getContainer().classList.toggle('basemap-satellite', nextName === 'satellite');
       tileFailed = false;
       try { localStorage.setItem('rutas:map-base', nextName); } catch {}
-      if (navigator.onLine) baseLayer.addTo(map);
+      if (navigator.onLine) {
+        baseLayer.addTo(map);
+        if (nextName === 'satellite') referenceLayers.forEach(layer => layer.addTo(map));
+      }
       connectionStatus();
     });
-    if (navigator.onLine) baseLayer.addTo(map);
+    if (navigator.onLine) {
+      baseLayer.addTo(map);
+      if (initialBase === 'satellite') referenceLayers.forEach(layer => layer.addTo(map));
+    }
     overview = L.layerGroup().addTo(map); focusLayer = L.layerGroup().addTo(map); pointLayer = L.layerGroup().addTo(map); travelLayer = L.layerGroup().addTo(map);
     for (const shape of Object.values(network.shapes)) L.polyline(splitGaps(shape), { color: '#41705b', weight: 2, opacity: .20, interactive: false }).addTo(overview);
     map.on('click', event => {
