@@ -134,9 +134,11 @@ function restoreSavedJourney(saved) {
     travel = {
       resultId: journeys[direction][selectedResult].id, index: saved.travel.index,
       line: legGeometry(network, leg), route: leg.routeId, stop: network.stops[leg.alightId].name,
-      paused: true, alerted: !!saved.travel.alerted, historyId: saved.travel.historyId || journeyHistoryId,
-      startedAt: saved.travel.startedAt,
-      message: 'La app quedó en segundo plano o se cerró. El recorrido está guardado; toca Reanudar para solicitar GPS otra vez.'
+      paused: !(window.RutasAndroidBridge && window.RutasAndroidBridge.isTracking()), alerted: !!saved.travel.alerted,
+      historyId: saved.travel.historyId || journeyHistoryId, startedAt: saved.travel.startedAt,
+      message: window.RutasAndroidBridge?.isTracking()
+        ? 'Seguimiento Android activo en segundo plano; GPS actualizado por el servicio.'
+        : 'La app quedó en segundo plano o se cerró. El recorrido está guardado; toca Reanudar para solicitar GPS otra vez.'
     };
     updateJourneyHistory('Interrumpida; lista para reanudar');
   }
@@ -145,24 +147,53 @@ function restoreSavedJourney(saved) {
 }
 
 function stopTravel(status = 'Finalizado') {
-  if (travelWatch !== null) navigator.geolocation.clearWatch(travelWatch);
+  if (travelWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(travelWatch);
   travelWatch = null;
+  try { window.RutasAndroidBridge?.stopTracking(); } catch {}
   if (travel) updateJourneyHistory(status);
   travel = null; travelLayer?.clearLayers(); saveJourneyState();
   if (journeys && mode === 'journey') renderJourneys();
 }
 function pauseTravel(message = 'Seguimiento pausado.') {
-  if (travelWatch !== null) navigator.geolocation.clearWatch(travelWatch);
+  if (travelWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(travelWatch);
   travelWatch = null;
+  try { window.RutasAndroidBridge?.stopTracking(); } catch {}
   if (travel) { travel.paused = true; travel.message = message; updateJourneyHistory('Pausado'); saveJourneyState(); renderJourneys(); }
 }
+function applyTravelPosition(pos) {
+  if (!travel || travel.paused) return;
+  const lat = Number(pos?.coords?.latitude ?? pos?.lat);
+  const lon = Number(pos?.coords?.longitude ?? pos?.lon);
+  const accuracy = Number(pos?.coords?.accuracy ?? pos?.accuracy);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+  const projected = remainingOnLine({ lat, lon }, travel.line);
+  travelLayer.clearLayers();
+  L.circleMarker([lat, lon], { radius: 8, color: '#fff', weight: 3, fillColor: '#2377d4', fillOpacity: 1 }).addTo(travelLayer).bindTooltip('Tu ubicación aproximada');
+  if (!projected || !Number.isFinite(accuracy) || accuracy > 100 || projected.offset > Math.max(100, accuracy * 2)) {
+    travel.message = `Ubicación imprecisa o alejada del trazado (precisión aprox. ${meters(accuracy)}). No se puede estimar la distancia.`;
+  } else {
+    travel.message = `Aprox. ${meters(projected.remaining)} por el trazado hasta ${travel.stop}. Precisión GPS ±${meters(accuracy)}; separación del trazado ${meters(projected.offset)}.`;
+    if (projected.remaining <= 300 && !travel.alerted) {
+      travel.alerted = true;
+      travel.message += ' Te acercas a la parada de bajada; comprueba tu ubicación.';
+      tell(`Te acercas a ${travel.stop}. Comprueba la parada antes de bajar.`, true);
+    } else if (travel.alerted && projected.remaining <= 300) travel.message += ' Te acercas a la parada; comprueba la parada.';
+    else if (projected.remaining > 500) travel.alerted = false;
+  }
+  saveJourneyState(); renderJourneys();
+}
+window.addEventListener('rutas-android-location', event => applyTravelPosition(event.detail));
+window.addEventListener('rutas-android-error', event => {
+  if (travel) pauseTravel(event.detail?.message || 'No se pudo iniciar el seguimiento GPS de Android.');
+});
 function startTravel(index) {
-  if (!window.isSecureContext || !navigator.geolocation) { tell('El modo viaje necesita GPS y HTTPS o localhost.'); return; }
+  const native = window.RutasAndroidBridge;
+  if (!window.isSecureContext || (!native && !navigator.geolocation)) { tell('El modo viaje necesita GPS y HTTPS o localhost.'); return; }
   const result = journeys?.[direction]?.[selectedResult], leg = result?.legs[index];
   if (!leg) return;
   const resuming = !!travel?.paused && travel.index === index;
   const historyId = resuming ? travel.historyId : journeyHistoryId;
-  if (travelWatch !== null) navigator.geolocation.clearWatch(travelWatch);
+  if (travelWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(travelWatch);
   travelWatch = null;
   if (travel && !resuming) stopTravel('Interrumpido');
   journeyHistoryId = historyId || journeyHistoryId;
@@ -174,57 +205,43 @@ function startTravel(index) {
   };
   rememberJourney('Seguimiento activo'); travel.historyId = journeyHistoryId;
   saveJourneyState(); renderJourneys();
-  travelWatch = navigator.geolocation.watchPosition(pos => {
-    if (!travel || travel.paused) return;
-    const p = { lat: pos.coords.latitude, lon: pos.coords.longitude }, accuracy = pos.coords.accuracy;
-    const projected = remainingOnLine(p, travel.line);
-    travelLayer.clearLayers();
-    L.circleMarker([p.lat, p.lon], { radius: 8, color: '#fff', weight: 3, fillColor: '#2377d4', fillOpacity: 1 }).addTo(travelLayer).bindTooltip('Tu ubicación aproximada');
-    if (!projected || !Number.isFinite(accuracy) || accuracy > 100 || projected.offset > Math.max(100, accuracy * 2)) {
-      travel.message = `Ubicación imprecisa o alejada del trazado (precisión aprox. ${meters(accuracy)}). No se puede estimar la distancia.`;
-    } else {
-      travel.message = `Aprox. ${meters(projected.remaining)} por el trazado hasta ${travel.stop}. Precisión GPS ±${meters(accuracy)}; separación del trazado ${meters(projected.offset)}.`;
-      if (projected.remaining <= 300 && !travel.alerted) {
-        travel.alerted = true;
-        travel.message += ' Te acercas a la parada de bajada; comprueba tu ubicación.';
-        tell(`Te acercas a ${travel.stop}. Comprueba la parada antes de bajar.`, true);
-      } else if (travel.alerted && projected.remaining <= 300) travel.message += ' Te acercas a la parada; comprueba tu ubicación.';
-      else if (projected.remaining > 500) travel.alerted = false;
+  if (native) {
+    try {
+      native.startTracking(JSON.stringify(travel.line), travel.stop, travel.route);
+      if (native.isTracking()) {
+        const latest = JSON.parse(native.getLatestLocation() || 'null');
+        if (latest) applyTravelPosition(latest);
+      }
+    } catch {
+      pauseTravel('Android no pudo iniciar el GPS. Revisa los permisos de ubicación y notificaciones.');
     }
-    saveJourneyState(); renderJourneys();
-  }, error => {
+    return;
+  }
+  travelWatch = navigator.geolocation.watchPosition(applyTravelPosition, error => {
     if (!travel) return;
     pauseTravel(error.code === 1 ? 'Permiso de ubicación denegado. Puedes reanudar tras concederlo.' : 'No se pudo obtener una ubicación. Comprueba el GPS y reanuda.');
   }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
 }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { saveJourneyState(); return; }
-  if (travel && !travel.paused) {
-    if (travelWatch !== null) navigator.geolocation.clearWatch(travelWatch);
-    travelWatch = navigator.geolocation.watchPosition(pos => {
-      if (!travel || travel.paused) return;
-      const p = { lat: pos.coords.latitude, lon: pos.coords.longitude }, accuracy = pos.coords.accuracy;
-      const projected = remainingOnLine(p, travel.line);
-      travelLayer.clearLayers();
-      L.circleMarker([p.lat, p.lon], { radius: 8, color: '#fff', weight: 3, fillColor: '#2377d4', fillOpacity: 1 }).addTo(travelLayer).bindTooltip('Tu ubicación aproximada');
-      if (!projected || !Number.isFinite(accuracy) || accuracy > 100 || projected.offset > Math.max(100, accuracy * 2)) {
-        travel.message = `Ubicación imprecisa o alejada del trazado (precisión aprox. ${meters(accuracy)}). No se puede estimar la distancia.`;
-      } else {
-        travel.message = `Aprox. ${meters(projected.remaining)} por el trazado hasta ${travel.stop}. Precisión GPS ±${meters(accuracy)}; separación del trazado ${meters(projected.offset)}.`;
-        if (projected.remaining <= 300 && !travel.alerted) {
-          travel.alerted = true;
-          travel.message += ' Te acercas a la parada de bajada; comprueba tu ubicación.';
-          tell(`Te acercas a ${travel.stop}. Comprueba la parada antes de bajar.`, true);
-        } else if (travel.alerted && projected.remaining <= 300) travel.message += ' Te acercas a la parada; comprueba la parada.';
-        else if (projected.remaining > 500) travel.alerted = false;
-      }
-      saveJourneyState(); renderJourneys();
-    }, error => pauseTravel(error.code === 1 ? 'Permiso de ubicación denegado. Puedes reanudar tras concederlo.' : 'No se pudo obtener una ubicación. Comprueba el GPS y reanuda.'), {
-      enableHighAccuracy: true, timeout: 15000, maximumAge: 5000
-    });
-    travel.message = 'GPS solicitado de nuevo al volver. Android pudo suspenderlo mientras la pantalla estuvo apagada.';
-    saveJourneyState(); renderJourneys();
+  if (!travel || travel.paused) return;
+  const native = window.RutasAndroidBridge;
+  if (native) {
+    try {
+      if (!native.isTracking()) { pauseTravel('El servicio GPS de Android ya no está activo. Toca Reanudar.'); return; }
+      const latest = JSON.parse(native.getLatestLocation() || 'null');
+      if (latest) applyTravelPosition(latest);
+      else { saveJourneyState(); renderJourneys(); }
+    } catch { tell('No pudimos recuperar la última ubicación del servicio Android.'); }
+    return;
   }
+  if (!navigator.geolocation) { pauseTravel('No se pudo recuperar el GPS. Toca Reanudar.'); return; }
+  if (travelWatch !== null) navigator.geolocation.clearWatch(travelWatch);
+  travelWatch = navigator.geolocation.watchPosition(applyTravelPosition, error => pauseTravel(
+    error.code === 1 ? 'Permiso de ubicación denegado. Puedes reanudar tras concederlo.' : 'No se pudo obtener una ubicación. Comprueba el GPS y reanuda.'
+  ), { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
+  travel.message = 'GPS solicitado de nuevo al volver. El navegador pudo suspenderlo mientras la pantalla estuvo apagada.';
+  saveJourneyState(); renderJourneys();
 });
 window.addEventListener('pagehide', saveJourneyState);
 
