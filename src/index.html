@@ -57,6 +57,11 @@
           <button class="button primary" id="plan-button" type="submit" disabled>Buscar recorrido<span data-icon="arrow"></span></button>
         </form>
         <div id="journey-results" aria-live="polite"></div>
+        <section id="journey-history" class="journey-history" hidden aria-label="Historial de recorridos">
+          <div class="history-heading"><h2>Recorridos recientes</h2><button id="clear-journey-history" class="text-button" type="button">Borrar historial</button></div>
+          <div id="journey-history-list"></div>
+          <p class="hint">Se guarda en este dispositivo, sin enviar el historial a un servidor.</p>
+        </section>
         <div id="welcome" class="welcome"><div class="mini-route"><span>A</span><i></i><span data-icon="bus"></span><i></i><span>B</span></div><h2>Tu recorrido, paso a paso</h2><p>Elige dos lugares para explorar dónde abordar, en qué sentido viajar y dónde bajar.</p><p class="hint">Las distancias de acceso son en línea recta. El camino a pie y la operación del bus requieren confirmación.</p></div>
       </div>
       <div class="panel" id="routes-panel" hidden>
@@ -94,9 +99,9 @@
     <dl class="source-facts"><div><dt>Geometrías y paradas</dt><dd>MapaNica / OpenStreetMap · publicadas el 27-oct-2020</dd></div><div><dt>Periodo del GTFS</dt><dd>Finalizó el 31-ene-2023</dd></div><div><dt>Copia examinada</dt><dd>Mobility Database · 8-feb-2024</dd></div><div><dt>Auditoría de fuentes</dt><dd>29-oct-2026 · no es una verificación en campo</dd></div></dl>
     <h3>Qué puedes consultar</h3><p>46 rutas, 92 variantes y 1,712 paradas de abordaje del archivo. Los sentidos se calculan de forma independiente. No se mezclan con las geometrías de 2016 ni con ediciones recientes de OSM sin contrastarlas.</p>
     <p id="quality-summary"></p><p>Los transbordos solo se proponen en la misma parada del archivo. Las distancias de acceso son aproximadas y no representan caminos peatonales comprobados.</p>
-    <h3>Privacidad y conexión</h3><p>El GPS se solicita solo al tocar «Mi ubicación» o iniciar el modo viaje. El modo viaje sigue únicamente tu ubicación mientras está activo; se pausa al ocultar la app y no guarda tu posición. No hay seguimiento de buses. Los puntos del viaje se mantienen en memoria. Al buscar una dirección, el texto se envía a Nominatim; se guardan hasta 20 búsquedas en este navegador. El mapa en línea solicita teselas a OpenStreetMap.</p>
+    <h3>Privacidad y conexión</h3><p>El GPS se solicita solo al tocar «Mi ubicación» o iniciar el modo viaje. El navegador puede suspender el seguimiento cuando la app queda en segundo plano. Se guardan en este dispositivo hasta 20 rutas consultadas, sus extremos y las opciones elegidas; no se guarda una traza de posiciones GPS ni se envía el historial a un servidor. No hay seguimiento de buses. Al buscar una dirección, el texto se envía a Nominatim; se guardan hasta 20 búsquedas en este navegador. El mapa en línea solicita teselas a OpenStreetMap.</p>
     <p>La app y los datos históricos quedan disponibles sin conexión después de la primera carga completa. No se descargan teselas para uso offline. Sin internet no hay búsqueda nueva de direcciones ni mapa base garantizado.</p>
-    <button type="button" id="clear-search-cache" class="button secondary">Borrar búsquedas guardadas</button>
+    <button type="button" id="clear-search-cache" class="button secondary">Borrar búsquedas guardadas</button><p>El botón «Borrar historial» en Mi viaje elimina los recorridos guardados en este dispositivo.</p>
     <h3>Procedencia y licencias</h3><p>Geodatos derivados de MapaNica y © contribuidores de OpenStreetMap, bajo <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Los datos temporales del feed no forman parte de esta app.</p>
     <ul class="source-links"><li><a href="https://commons.wikimedia.org/wiki/File:Bus_station_in_Managua,_Nicaragua_2023.jpg" target="_blank" rel="noopener">Fotografía del ícono: Ridiculopathy · CC0 1.0 ↗</a></li><li><a href="https://mobilitydatabase.org/feeds/gtfs/mdb-1021" target="_blank" rel="noopener">Ficha del archivo GTFS ↗</a></li><li><a href="https://github.com/mapanica/datos/tree/d34a60369a66bc9ee49633d753222f5b2ce12867" target="_blank" rel="noopener">Datos de MapaNica y condiciones ↗</a></li><li><a href="./docs/AUDITORIA_FUENTES_TRANSPORTE.md" target="_blank">Auditoría completa ↗</a></li><li><a href="./data/network.json" download>Descargar datos espaciales y procedencia</a></li><li><a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Reportar un problema del mapa base ↗</a></li></ul>
   </dialog>
