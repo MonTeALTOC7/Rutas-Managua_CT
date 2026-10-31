@@ -3,6 +3,7 @@ package ni.rutasmanagua.app;
 import android.Manifest;
 import android.app.Activity;
 import android.content.*;
+import android.net.Uri;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Build;
@@ -35,7 +36,14 @@ public final class MainActivity extends Activity {
     web.getSettings().setGeolocationEnabled(true);
     web.getSettings().setAllowFileAccess(false);
     web.addJavascriptInterface(new Bridge(), "RutasAndroidBridge");
-    web.setWebViewClient(new WebViewClient());
+    web.setWebViewClient(new WebViewClient() {
+      @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        Uri uri=request.getUrl();
+        if ("montealtoc7.github.io".equalsIgnoreCase(uri.getHost()) && "https".equalsIgnoreCase(uri.getScheme())) return false;
+        try { startActivity(new Intent(Intent.ACTION_VIEW, uri)); } catch(Exception ignored) {}
+        return true;
+      }
+    });
     web.setWebChromeClient(new WebChromeClient() {
       @Override public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
         boolean granted = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
