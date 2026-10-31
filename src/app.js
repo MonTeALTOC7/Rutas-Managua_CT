@@ -37,25 +37,143 @@ const revisions = { origin: 0, destination: 0, nearby: 0 };
 let mode = 'journey', pick = null, network, map, focusLayer, pointLayer, overview, geocode;
 let journeys = null, direction = 0, selectedResult = 0, planRevision = 0;
 let currentRoute = null, currentVariant = null;
-let travel = null, travelLayer, travelWatch = null;
-function stopTravel() {
+const JOURNEY_STATE_KEY = 'rutas:journey-state:v1';
+const JOURNEY_HISTORY_KEY = 'rutas:journey-history:v1';
+let travel = null, travelLayer, travelWatch = null, journeyHistoryId = null;
+function getJourneyHistory() {
+  try { const items = JSON.parse(localStorage.getItem(JOURNEY_HISTORY_KEY) || '[]'); return Array.isArray(items) ? items : []; }
+  catch { return []; }
+}
+function saveJourneyHistory(items) {
+  try { localStorage.setItem(JOURNEY_HISTORY_KEY, JSON.stringify(items.slice(0, 20))); } catch {}
+  renderJourneyHistory();
+}
+function saveJourneyState() {
+  if (!journeys || !points.origin || !points.destination) return;
+  const point = p => p && ({ lat: p.lat, lon: p.lon, name: p.name, source: p.source });
+  const state = {
+    origin: point(points.origin), destination: point(points.destination),
+    options: { radius: Number($('#walk-radius').value), transfers: $('#transfers').checked },
+    direction, selectedResult, historyId: journeyHistoryId,
+    travel: travel && { index: travel.index, route: travel.route, stop: travel.stop, alerted: travel.alerted, historyId: travel.historyId, startedAt: travel.startedAt }
+  };
+  try { localStorage.setItem(JOURNEY_STATE_KEY, JSON.stringify(state)); } catch {}
+}
+function updateJourneyHistory(status) {
+  const items = getJourneyHistory(), item = items.find(value => value.id === journeyHistoryId);
+  if (!item) return;
+  item.status = status; item.updatedAt = new Date().toISOString(); saveJourneyHistory(items);
+}
+function rememberJourney(status = 'Consultada') {
+  const result = journeys?.[direction]?.[selectedResult];
+  if (!result || !points.origin || !points.destination) return;
+  const items = getJourneyHistory(), point = p => ({ lat: p.lat, lon: p.lon, name: p.name, source: p.source });
+  let item = items.find(value => value.id === journeyHistoryId);
+  if (!item) {
+    journeyHistoryId = `trip-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    item = { id: journeyHistoryId, createdAt: new Date().toISOString() }; items.unshift(item);
+  }
+  Object.assign(item, {
+    origin: point(points.origin), destination: point(points.destination),
+    options: { radius: Number($('#walk-radius').value), transfers: $('#transfers').checked },
+    direction, selectedResult, routeIds: result.legs.map(leg => leg.routeId),
+    legs: result.legs.map(leg => ({ routeId: leg.routeId, board: network.stops[leg.boardId].name, alight: network.stops[leg.alightId].name })),
+    status, updatedAt: new Date().toISOString()
+  });
+  saveJourneyHistory(items);
+}
+function renderJourneyHistory() {
+  const section = $('#journey-history'), list = $('#journey-history-list');
+  if (!section || !list) return;
+  const items = getJourneyHistory(); section.hidden = !items.length;
+  list.innerHTML = items.map(item => {
+    const date = new Date(item.updatedAt || item.createdAt).toLocaleString('es-NI', { dateStyle: 'short', timeStyle: 'short' });
+    return `<article class="history-trip"><div><strong>${esc((item.routeIds || []).join(' → '))}</strong><small>${esc(item.origin?.name)} → ${esc(item.destination?.name)}</small><small>${esc(date)} · ${esc(item.status)}</small></div><button type="button" class="button secondary" data-reopen-trip="${esc(item.id)}">Ver ruta</button></article>`;
+  }).join('');
+}
+function reopenJourney(snapshot) {
+  if (!network || !map || !snapshot?.origin || !snapshot?.destination) return;
+  if (mode !== 'journey') setMode('journey');
+  stopTravel('Interrumpido');
+  points.origin = snapshot.origin; points.destination = snapshot.destination;
+  for (const field of ['origin', 'destination']) {
+    $(`#${field}-input`).value = points[field].name || '';
+    $(`[data-field="${field}"].endpoint`).classList.add('chosen');
+    $(`#${field}-suggestions`).innerHTML = '';
+  }
+  $('#walk-radius').value = String(snapshot.options?.radius || 600);
+  $('#transfers').checked = snapshot.options?.transfers !== false;
+  const options = { radius: Number($('#walk-radius').value), transfers: $('#transfers').checked };
+  journeys = [plan(network, points.origin, points.destination, options), plan(network, points.destination, points.origin, options)];
+  direction = snapshot.direction === 1 ? 1 : 0;
+  selectedResult = Math.min(Number(snapshot.selectedResult) || 0, Math.max(0, journeys[direction].length - 1));
+  journeyHistoryId = snapshot.historyId || snapshot.id || null;
+  travelLayer?.clearLayers(); renderPoints(); renderJourneys(); drawJourney(); saveJourneyState();
+  $('.workspace').classList.remove('map-focus');
+  $('#panel-toggle').setAttribute('aria-expanded', 'true');
+  $('#panel-toggle-label').textContent = 'Ampliar mapa';
+  $('#panel-toggle [data-icon]').innerHTML = icon('expand');
+  requestAnimationFrame(() => map.invalidateSize({ pan: false }));
+}
+function restoreSavedJourney(saved) {
+  if (!network || !map || !saved?.origin || !saved?.destination) return false;
+  points.origin = saved.origin; points.destination = saved.destination;
+  for (const field of ['origin', 'destination']) {
+    $(`#${field}-input`).value = points[field].name || '';
+    $(`[data-field="${field}"].endpoint`).classList.add('chosen');
+  }
+  $('#walk-radius').value = String(saved.options?.radius || 600);
+  $('#transfers').checked = saved.options?.transfers !== false;
+  const options = { radius: Number($('#walk-radius').value), transfers: $('#transfers').checked };
+  journeys = [plan(network, points.origin, points.destination, options), plan(network, points.destination, points.origin, options)];
+  direction = saved.direction === 1 ? 1 : 0;
+  selectedResult = Math.min(Number(saved.selectedResult) || 0, Math.max(0, journeys[direction].length - 1));
+  journeyHistoryId = saved.historyId || null;
+  if (saved.travel && journeys[direction][selectedResult]?.legs[saved.travel.index]) {
+    const leg = journeys[direction][selectedResult].legs[saved.travel.index];
+    travel = {
+      resultId: journeys[direction][selectedResult].id, index: saved.travel.index,
+      line: legGeometry(network, leg), route: leg.routeId, stop: network.stops[leg.alightId].name,
+      paused: true, alerted: !!saved.travel.alerted, historyId: saved.travel.historyId || journeyHistoryId,
+      startedAt: saved.travel.startedAt,
+      message: 'La app quedó en segundo plano o se cerró. El recorrido está guardado; toca Reanudar para solicitar GPS otra vez.'
+    };
+    updateJourneyHistory('Interrumpida; lista para reanudar');
+  }
+  renderPoints(); renderJourneys(); drawJourney(); saveJourneyState();
+  return true;
+}
+
+function stopTravel(status = 'Finalizado') {
   if (travelWatch !== null) navigator.geolocation.clearWatch(travelWatch);
-  travelWatch = null; travel = null; travelLayer?.clearLayers();
+  travelWatch = null;
+  if (travel) updateJourneyHistory(status);
+  travel = null; travelLayer?.clearLayers(); saveJourneyState();
   if (journeys && mode === 'journey') renderJourneys();
 }
 function pauseTravel(message = 'Seguimiento pausado.') {
   if (travelWatch !== null) navigator.geolocation.clearWatch(travelWatch);
   travelWatch = null;
-  if (travel) { travel.paused = true; travel.message = message; renderJourneys(); }
+  if (travel) { travel.paused = true; travel.message = message; updateJourneyHistory('Pausado'); saveJourneyState(); renderJourneys(); }
 }
 function startTravel(index) {
   if (!window.isSecureContext || !navigator.geolocation) { tell('El modo viaje necesita GPS y HTTPS o localhost.'); return; }
   const result = journeys?.[direction]?.[selectedResult], leg = result?.legs[index];
   if (!leg) return;
-  stopTravel();
-  travel = { resultId: result.id, index, line: legGeometry(network, leg), route: leg.routeId,
-    stop: network.stops[leg.alightId].name, paused: false, alerted: false, message: 'Esperando ubicación del GPS…' };
-  renderJourneys();
+  const resuming = !!travel?.paused && travel.index === index;
+  const historyId = resuming ? travel.historyId : journeyHistoryId;
+  if (travelWatch !== null) navigator.geolocation.clearWatch(travelWatch);
+  travelWatch = null;
+  if (travel && !resuming) stopTravel('Interrumpido');
+  journeyHistoryId = historyId || journeyHistoryId;
+  travel = {
+    resultId: result.id, index, line: legGeometry(network, leg), route: leg.routeId,
+    stop: network.stops[leg.alightId].name, paused: false, alerted: resuming && !!travel?.alerted,
+    historyId: journeyHistoryId, startedAt: resuming ? travel.startedAt : new Date().toISOString(),
+    message: 'Esperando ubicación del GPS…'
+  };
+  rememberJourney('Seguimiento activo'); travel.historyId = journeyHistoryId;
+  saveJourneyState(); renderJourneys();
   travelWatch = navigator.geolocation.watchPosition(pos => {
     if (!travel || travel.paused) return;
     const p = { lat: pos.coords.latitude, lon: pos.coords.longitude }, accuracy = pos.coords.accuracy;
@@ -73,15 +191,42 @@ function startTravel(index) {
       } else if (travel.alerted && projected.remaining <= 300) travel.message += ' Te acercas a la parada; comprueba tu ubicación.';
       else if (projected.remaining > 500) travel.alerted = false;
     }
-    renderJourneys();
+    saveJourneyState(); renderJourneys();
   }, error => {
     if (!travel) return;
     pauseTravel(error.code === 1 ? 'Permiso de ubicación denegado. Puedes reanudar tras concederlo.' : 'No se pudo obtener una ubicación. Comprueba el GPS y reanuda.');
   }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && travel && !travel.paused) pauseTravel('Seguimiento pausado al salir de la app. Vuelve a abrirla y reanuda.');
+  if (document.hidden) { saveJourneyState(); return; }
+  if (travel && !travel.paused) {
+    if (travelWatch !== null) navigator.geolocation.clearWatch(travelWatch);
+    travelWatch = navigator.geolocation.watchPosition(pos => {
+      if (!travel || travel.paused) return;
+      const p = { lat: pos.coords.latitude, lon: pos.coords.longitude }, accuracy = pos.coords.accuracy;
+      const projected = remainingOnLine(p, travel.line);
+      travelLayer.clearLayers();
+      L.circleMarker([p.lat, p.lon], { radius: 8, color: '#fff', weight: 3, fillColor: '#2377d4', fillOpacity: 1 }).addTo(travelLayer).bindTooltip('Tu ubicación aproximada');
+      if (!projected || !Number.isFinite(accuracy) || accuracy > 100 || projected.offset > Math.max(100, accuracy * 2)) {
+        travel.message = `Ubicación imprecisa o alejada del trazado (precisión aprox. ${meters(accuracy)}). No se puede estimar la distancia.`;
+      } else {
+        travel.message = `Aprox. ${meters(projected.remaining)} por el trazado hasta ${travel.stop}. Precisión GPS ±${meters(accuracy)}; separación del trazado ${meters(projected.offset)}.`;
+        if (projected.remaining <= 300 && !travel.alerted) {
+          travel.alerted = true;
+          travel.message += ' Te acercas a la parada de bajada; comprueba tu ubicación.';
+          tell(`Te acercas a ${travel.stop}. Comprueba la parada antes de bajar.`, true);
+        } else if (travel.alerted && projected.remaining <= 300) travel.message += ' Te acercas a la parada; comprueba la parada.';
+        else if (projected.remaining > 500) travel.alerted = false;
+      }
+      saveJourneyState(); renderJourneys();
+    }, error => pauseTravel(error.code === 1 ? 'Permiso de ubicación denegado. Puedes reanudar tras concederlo.' : 'No se pudo obtener una ubicación. Comprueba el GPS y reanuda.'), {
+      enableHighAccuracy: true, timeout: 15000, maximumAge: 5000
+    });
+    travel.message = 'GPS solicitado de nuevo al volver. Android pudo suspenderlo mientras la pantalla estuvo apagada.';
+    saveJourneyState(); renderJourneys();
+  }
 });
+window.addEventListener('pagehide', saveJourneyState);
 
 function trust() { return `<p class="trust-line">${icon('history')}Histórico · vigencia sin confirmar</p>`; }
 function renderPoints() {
@@ -96,8 +241,10 @@ function renderPoints() {
   }
 }
 function clearJourney() {
-  stopTravel();
+  stopTravel('Interrumpido');
   journeys = null;
+  journeyHistoryId = null;
+  try { localStorage.removeItem(JOURNEY_STATE_KEY); } catch {}
   planRevision++;
   $('#plan-button').disabled = !network;
   $('#journey-results').innerHTML = '';
@@ -247,8 +394,9 @@ $('#journey-form').addEventListener('submit', async event => {
   const options = { radius: Number($('#walk-radius').value), transfers: $('#transfers').checked };
   // Compute both independently, even if one direction produces no candidates.
   journeys = [plan(network, points.origin, points.destination, options), plan(network, points.destination, points.origin, options)];
-  direction = 0; selectedResult = 0; $('#plan-button').disabled = false;
-  renderJourneys(); drawJourney();
+  direction = 0; selectedResult = 0; journeyHistoryId = null; $('#plan-button').disabled = false;
+  if (journeys[0].length) rememberJourney('Consultada');
+  renderJourneys(); drawJourney(); saveJourneyState();
 });
 $('#walk-radius').addEventListener('change', clearJourney);
 $('#transfers').addEventListener('change', clearJourney);
@@ -275,22 +423,34 @@ function renderJourneys() {
           html += `<div class="step"><strong>Baja en ${esc(alight.name)}</strong><small>${leg.to - leg.from} tramos entre paradas en este sentido.</small>${i === result.legs.length - 1 ? `<small>Parada a destino: ${meters(result.egress)} en línea recta; camino a pie por comprobar.</small>` : ''}</div>`;
         });
         html += '</div>';
-        html += `<div class="result-note"><strong>Modo viaje opcional</strong><p>Usa solo tu GPS, con la app abierta. La distancia sigue el trazado histórico; la precisión, los bucles y los cambios de ruta pueden causar errores. Confirma la parada antes de bajar.</p>${result.legs.map((l,i) => `<button type="button" class="button secondary" data-travel="${i}">Seguir tramo ${i + 1} · ${esc(l.routeId)}</button>`).join(' ')}${travel?.resultId === result.id ? `<p role="status">${esc(travel.message)}</p><button type="button" class="button secondary" data-travel-action="${travel.paused ? 'resume' : 'pause'}">${travel.paused ? 'Reanudar' : 'Pausar'}</button> <button type="button" class="button secondary" data-travel-action="stop">Finalizar</button>` : ''}</div>`;
+        html += `<div class="result-note"><strong>Modo viaje opcional</strong><p>El GPS funciona mientras la app está visible. Android puede suspenderlo al apagar la pantalla; el navegador no garantiza seguimiento continuo en segundo plano. La ruta se guarda en este dispositivo para reanudar al volver. Para GPS continuo con pantalla apagada hace falta una app Android con servicio en primer plano y notificación permanente. Confirma la parada antes de bajar.</p>${result.legs.map((l,i) => `<button type="button" class="button secondary" data-travel="${i}">Seguir tramo ${i + 1} · ${esc(l.routeId)}</button>`).join(' ')}${travel?.resultId === result.id ? `<p role="status">${esc(travel.message)}</p><button type="button" class="button secondary" data-travel-action="${travel.paused ? 'resume' : 'pause'}">${travel.paused ? 'Reanudar' : 'Pausar'}</button> <button type="button" class="button secondary" data-travel-action="stop">Finalizar</button>` : ''}</div>`;
         html += '<div class="result-note">MapaNica / OSM · geometrías 2020 · GTFS finalizado el 31-ene-2023. Revisa la operación y el acceso antes de viajar.</div>';
       }
       html += '</article>';
     });
   }
   $('#journey-results').innerHTML = html;
+  renderJourneyHistory();
 }
+$('#journey-history').addEventListener('click', event => {
+  const button = event.target.closest('[data-reopen-trip]');
+  if (button) {
+    const item = getJourneyHistory().find(value => value.id === button.dataset.reopenTrip);
+    if (item) reopenJourney(item);
+  }
+});
+$('#clear-journey-history').addEventListener('click', () => {
+  saveJourneyHistory([]); journeyHistoryId = null;
+  tell('Historial de recorridos borrado de este dispositivo.');
+});
 $('#journey-results').addEventListener('click', event => {
   const action = event.target.closest('[data-travel-action]');
-  if (action) { if (action.dataset.travelAction === 'pause') pauseTravel(); else if (action.dataset.travelAction === 'resume') startTravel(travel.index); else stopTravel(); return; }
+  if (action) { if (action.dataset.travelAction === 'pause') pauseTravel(); else if (action.dataset.travelAction === 'resume') startTravel(travel.index); else stopTravel('Finalizado'); return; }
   const follow = event.target.closest('[data-travel]');
   if (follow) { startTravel(Number(follow.dataset.travel)); return; }
   const toggle = event.target.closest('[data-direction]'), result = event.target.closest('[data-result]');
-  if (toggle) { stopTravel(); direction = Number(toggle.dataset.direction); selectedResult = 0; renderJourneys(); drawJourney(); }
-  if (result) { stopTravel(); selectedResult = Number(result.dataset.result); renderJourneys(); drawJourney(); }
+  if (toggle) { stopTravel('Interrumpido'); direction = Number(toggle.dataset.direction); selectedResult = 0; rememberJourney('Ruta elegida'); renderJourneys(); drawJourney(); saveJourneyState(); }
+  if (result) { stopTravel('Interrumpido'); selectedResult = Number(result.dataset.result); rememberJourney('Ruta elegida'); renderJourneys(); drawJourney(); saveJourneyState(); }
 });
 function drawJourney() {
   focusLayer.clearLayers();
@@ -564,7 +724,11 @@ async function start() {
     const excluded = network.variants.filter(v => !v.planningEligible).length;
     $('#quality-summary').textContent = `${excluded} variantes tienen inconsistencias de orden o continuidad y se excluyen del planificador. Siguen visibles para consulta, con su advertencia. Las demás tampoco tienen vigencia operativa confirmada.`;
     $('#plan-button').disabled = false;
-    connectionStatus(); renderRoutes();
+    connectionStatus(); renderRoutes(); renderJourneyHistory();
+    try {
+      const saved = JSON.parse(localStorage.getItem(JOURNEY_STATE_KEY) || 'null');
+      if (saved && restoreSavedJourney(saved)) tell('Restauramos tu último recorrido desde este dispositivo.');
+    } catch {}
     if ('serviceWorker' in navigator && window.isSecureContext) {
       try {
         const registration = await navigator.serviceWorker.register('./sw.js');
