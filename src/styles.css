@@ -70,3 +70,15 @@
   .workspace.map-focus .tabs,.workspace.map-focus .panel,.workspace.map-focus .panel-footer{display:none}
   .workspace.map-focus .map-panel-toggle{height:48px;min-height:48px;background:var(--paper);border-top:1px solid var(--line);border-bottom:0}
 }
+
+.journey-history{margin:18px 0 8px;padding:14px;background:#f4f5ed;border:1px solid var(--line);border-radius:13px}
+.history-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.history-heading h2{font-size:15px}
+.text-button{font-size:11px;color:var(--green);text-decoration:underline;text-underline-offset:2px}
+.history-trip{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.history-trip:last-child{border-bottom:0}
+.history-trip>div{min-width:0}
+.history-trip strong,.history-trip small{display:block}
+.history-trip strong{font-size:12px}
+.history-trip small{font-size:10px;color:var(--muted);margin-top:3px}
+.history-trip .button{width:auto;min-height:36px;padding:7px 10px;white-space:nowrap}
